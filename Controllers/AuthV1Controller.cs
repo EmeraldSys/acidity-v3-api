@@ -247,7 +247,7 @@ namespace AcidityV3Backend.Controllers
         }
 
         [HttpGet("whitelist/scriptHash")]
-        public IActionResult ScriptHashGet([FromQuery]string key)
+        public IActionResult ScriptHashGet([FromQuery]string key, [FromQuery]bool isPre)
         {
             if (string.IsNullOrEmpty(key)) return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
 
@@ -260,31 +260,64 @@ namespace AcidityV3Backend.Controllers
 
             if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
 
-            BsonDocument latest = versionsCollection.Find(new BsonDocument { { "latest", true } }).FirstOrDefault();
-
-            if (latest != null && latest.Contains("version") && latest["version"].IsString)
+            if (isPre)
             {
-                try
+                BsonDocument latest = versionsCollection.Find(new BsonDocument { { "latestPre", true } }).FirstOrDefault();
+
+                if (latest != null && latest.Contains("version") && latest["version"].IsString)
                 {
-                    byte[] scriptBytes = System.IO.File.ReadAllBytes(Program.CURRENT_DIR + $"script/{latest["version"].AsString}.lua");
-                    using (SHA256 cipher = SHA256.Create())
+                    try
                     {
-                        byte[] hashBytes = cipher.ComputeHash(scriptBytes);
-                        cipher.Dispose();
-
-                        StringBuilder sb = new StringBuilder(128);
-                        foreach (byte b in hashBytes)
+                        byte[] scriptBytes = System.IO.File.ReadAllBytes(Program.CURRENT_DIR + $"script/{latest["version"].AsString}.lua");
+                        using (SHA256 cipher = SHA256.Create())
                         {
-                            sb.Append(b.ToString("X2"));
-                        }
+                            byte[] hashBytes = cipher.ComputeHash(scriptBytes);
+                            cipher.Dispose();
 
-                        string scriptHash = sb.ToString().ToLower();
-                        return Ok(new { Status = "OK", Hash = scriptHash });
+                            StringBuilder sb = new StringBuilder(128);
+                            foreach (byte b in hashBytes)
+                            {
+                                sb.Append(b.ToString("X2"));
+                            }
+
+                            string scriptHash = sb.ToString().ToLower();
+                            return Ok(new { Status = "OK", Hash = scriptHash });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        return StatusCode(500, new { Status = "SCRIPT_READ_ERR", Message = ex.Message });
                     }
                 }
-                catch (Exception ex)
+            }
+            else
+            {
+                BsonDocument latest = versionsCollection.Find(new BsonDocument { { "latestStable", true } }).FirstOrDefault();
+
+                if (latest != null && latest.Contains("version") && latest["version"].IsString)
                 {
-                    return StatusCode(500, new { Status = "SCRIPT_READ_ERR", Message = ex.Message });
+                    try
+                    {
+                        byte[] scriptBytes = System.IO.File.ReadAllBytes(Program.CURRENT_DIR + $"script/{latest["version"].AsString}.lua");
+                        using (SHA256 cipher = SHA256.Create())
+                        {
+                            byte[] hashBytes = cipher.ComputeHash(scriptBytes);
+                            cipher.Dispose();
+
+                            StringBuilder sb = new StringBuilder(128);
+                            foreach (byte b in hashBytes)
+                            {
+                                sb.Append(b.ToString("X2"));
+                            }
+
+                            string scriptHash = sb.ToString().ToLower();
+                            return Ok(new { Status = "OK", Hash = scriptHash });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        return StatusCode(500, new { Status = "SCRIPT_READ_ERR", Message = ex.Message });
+                    }
                 }
             }
 
