@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -120,7 +121,7 @@ namespace AcidityV3Backend.Controllers
         }
 
         [HttpGet("whitelist/script")]
-        public IActionResult ScriptGet([FromQuery]string key)
+        public IActionResult ScriptGet([FromQuery]string key, [FromQuery]bool isPre)
         {
             if (string.IsNullOrEmpty(key)) return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
 
@@ -133,7 +134,7 @@ namespace AcidityV3Backend.Controllers
 
             if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
 
-            BsonDocument latest = versionsCollection.Find(new BsonDocument { { "latest", true } }).FirstOrDefault();
+            BsonDocument latest = versionsCollection.Find(new BsonDocument { { "latestStable", true } }).FirstOrDefault();
 
             if (latest != null && latest.Contains("version") && latest["version"].IsString)
             {
@@ -188,9 +189,12 @@ namespace AcidityV3Backend.Controllers
         }
 
         [HttpPatch("whitelist/script/{version}")]
-        public IActionResult ScriptPublish(string version, [FromQuery]string key)
+        public async Task<IActionResult> ScriptPublish(string version, [FromQuery]string key, [FromQuery]bool isPre, IFormCollection data)
         {
             if (string.IsNullOrEmpty(version) || string.IsNullOrEmpty(key)) return BadRequest(new { Status = "AUTH_BAD", Message = "Version and/or key is null or empty" });
+
+            IFormFileCollection formFiles = data.Files;
+            if (formFiles.Count != 1) return BadRequest(new { Status = "REQ_BODY_BAD" });
 
             IMongoDatabase database = client.GetDatabase("aciditydb");
 
@@ -204,11 +208,40 @@ namespace AcidityV3Backend.Controllers
             if (!result.Contains("admin") || !result["admin"].IsBoolean || !result["admin"].AsBoolean)
                 return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Missing access" });
 
-            FilterDefinition<BsonDocument> filterLatest = Builders<BsonDocument>.Filter.Eq("latest", true);
-            UpdateDefinition<BsonDocument> removeLatest = Builders<BsonDocument>.Update.Set("latest", false);
+            BsonDocument existing = versionsCollection.Find(new BsonDocument { { "version", version } }).FirstOrDefault();
 
-            versionsCollection.FindOneAndUpdate(filterLatest, removeLatest, new FindOneAndUpdateOptions<BsonDocument> { IsUpsert = false });
-            versionsCollection.InsertOne(new BsonDocument { { "version", version }, { "latest", true } });
+            if (existing == null)
+            {
+                if (isPre)
+                {
+                    FilterDefinition<BsonDocument> filterLatestPre = Builders<BsonDocument>.Filter.Eq("latestPre", true);
+                    UpdateDefinition<BsonDocument> removeLatestPre = Builders<BsonDocument>.Update.Set("latestPre", false);
+
+                    versionsCollection.FindOneAndUpdate(filterLatestPre, removeLatestPre, new FindOneAndUpdateOptions<BsonDocument> { IsUpsert = false });
+                    versionsCollection.InsertOne(new BsonDocument { { "version", version }, { "latestPre", true }, { "latestStable", false } });
+                }
+                else
+                {
+                    FilterDefinition<BsonDocument> filterLatestStable = Builders<BsonDocument>.Filter.Eq("latestStable", true);
+                    UpdateDefinition<BsonDocument> removeLatestStable = Builders<BsonDocument>.Update.Set("latestStable", false);
+
+                    versionsCollection.FindOneAndUpdate(filterLatestStable, removeLatestStable, new FindOneAndUpdateOptions<BsonDocument> { IsUpsert = false });
+                    versionsCollection.InsertOne(new BsonDocument { { "version", version }, { "latestPre", false }, { "latestStable", true } });
+                }
+            }
+
+            try
+            {
+                using (FileStream fs = new FileStream(Program.CURRENT_DIR + $"script/{version}.lua", FileMode.Create))
+                {
+                    await formFiles[0].CopyToAsync(fs);
+                    fs.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Status = "SCRIPT_WRITE_ERR", Message = ex.Message });
+            }
 
             return StatusCode(201, new { Status = "CREATED" });
         }
