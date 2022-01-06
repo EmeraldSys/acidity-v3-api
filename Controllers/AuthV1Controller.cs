@@ -51,12 +51,13 @@ namespace AcidityV3Backend.Controllers
 
             using (SHA512 cipher = SHA512.Create())
             {
+                string nonce1 = Environment.GetEnvironmentVariable("NONCE1");
                 string nonce2 = Environment.GetEnvironmentVariable("NONCE2");
                 DateTime hashDate = DateTime.UtcNow;
 
                 if (type.ToLower() == "syn")
                 {
-                    string info = key + hash + nonce2 + result["synFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour;
+                    string info = "ACIDITYV3_" + nonce1 + key + hash + nonce2 + result["synFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour;
                     byte[] hashBytes = cipher.ComputeHash(Encoding.UTF8.GetBytes(info));
                     cipher.Dispose();
 
@@ -72,7 +73,7 @@ namespace AcidityV3Backend.Controllers
                 
                 if (type.ToLower() == "sw")
                 {
-                    string info = key + hash + nonce2 + result["swFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour;
+                    string info = "ACIDITYV3_" + nonce1 + key + hash + nonce2 + result["swFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour;
                     byte[] hashBytes = cipher.ComputeHash(Encoding.UTF8.GetBytes(info));
                     cipher.Dispose();
 
