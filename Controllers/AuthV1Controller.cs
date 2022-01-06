@@ -51,7 +51,7 @@ namespace AcidityV3Backend.Controllers
 
             using (SHA512 cipher = SHA512.Create())
             {
-                string nonce2 = "677a9ec79cbfeabb";
+                string nonce2 = Environment.GetEnvironmentVariable("NONCE2");
                 DateTime hashDate = DateTime.UtcNow;
 
                 if (type.ToLower() == "syn")
