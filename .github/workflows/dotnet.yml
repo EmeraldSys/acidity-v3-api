@@ -1,0 +1,38 @@
+﻿name: .NET
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create Certificate
+      run: |
+        New-Item -ItemType directory -Path certificate
+        Set-Content -Path certificate\certificate.txt -Value '${{ secrets.CS_CERTIFICATE }}'
+        certutil -decode certificate\certificate.txt certificate\certificate.pfx
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.x
+    - name: Restore Dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+    - name: Sign Binaries
+      run: |
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.17763.0/x86/signtool.exe' sign /f certificate\certificate.pfx /p '${{ secrets.CS_CERT_PASS }}' /t http://timestamp.sectigo.com bin\Debug\netcoreapp3.1\AcidityV3Backend.dll bin\Debug\netcoreapp3.1\AcidityV3Backend.exe
+    - name: Verify Binaries
+      run: |
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.17763.0/x86/signtool.exe' verify /pa bin\Debug\netcoreapp3.1\AcidityV3Backend.dll bin\Debug\netcoreapp3.1\AcidityV3Backend.exe
+    - name: Upload Binaries
+      uses: actions/upload-artifact@v2.3.1
+      with:
+        name: AcidityV3Backend
+        path: bin\Debug\netcoreapp3.1\
