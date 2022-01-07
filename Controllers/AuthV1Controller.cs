@@ -121,6 +121,36 @@ namespace AcidityV3Backend.Controllers
             return BadRequest(new { Status = "AUTH_BAD", Message = "Fingerprint and type mismatch" });
         }
 
+        [HttpGet("whitelist/nonce1")]
+        public IActionResult Nonce1Get([FromQuery]string key)
+        {
+            if (string.IsNullOrEmpty(key)) return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
+
+            IMongoDatabase database = client.GetDatabase("aciditydb");
+            IMongoCollection<BsonDocument> userCollection = database.GetCollection<BsonDocument>("users");
+
+            BsonDocument result = userCollection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
+
+            if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
+
+            return Content(Environment.GetEnvironmentVariable("NONCE1"));
+        }
+
+        [HttpGet("whitelist/nonce2")]
+        public IActionResult Nonce2Get([FromQuery]string key)
+        {
+            if (string.IsNullOrEmpty(key)) return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
+
+            IMongoDatabase database = client.GetDatabase("aciditydb");
+            IMongoCollection<BsonDocument> userCollection = database.GetCollection<BsonDocument>("users");
+
+            BsonDocument result = userCollection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
+
+            if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
+
+            return Content(Environment.GetEnvironmentVariable("NONCE2"));
+        }
+
         [HttpGet("whitelist/script")]
         public IActionResult ScriptGet([FromQuery]string key, [FromQuery]bool isPre)
         {
