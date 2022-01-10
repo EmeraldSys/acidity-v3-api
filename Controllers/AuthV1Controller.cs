@@ -434,8 +434,19 @@ namespace AcidityV3Backend.Controllers
             if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
 
             List<BsonDocument> versionList = versionsCollection.Find(new BsonDocument()).ToList();
+            List<BsonDocument> versionListRet = new List<BsonDocument>();
 
-            return Ok(new { Status = "OK", Versions = versionList });
+            for (int i = 0; i < versionList.Count; i++)
+            {
+                BsonDocument version = versionList[i];
+                if (version.Contains("_id") && version["_id"].IsObjectId)
+                {
+                    version.Remove("_id");
+                }
+                versionListRet.Add(version);
+            }
+
+            return Ok(new { Status = "OK", Versions = versionListRet });
         }
 
         [HttpGet("whitelist/version")]
