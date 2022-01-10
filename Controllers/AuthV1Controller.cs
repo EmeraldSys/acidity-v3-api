@@ -418,7 +418,7 @@ namespace AcidityV3Backend.Controllers
         }
 
         [HttpGet("whitelist/version")]
-        public IActionResult VersionLatestGet([FromQuery]string key)
+        public IActionResult VersionLatestGet([FromQuery]string key, [FromQuery]bool isPre)
         {
             if (string.IsNullOrEmpty(key))
                 return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
@@ -432,7 +432,16 @@ namespace AcidityV3Backend.Controllers
 
             if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
 
-            BsonDocument latest = versionsCollection.Find(new BsonDocument { { "latestStable", true } }).FirstOrDefault();
+            BsonDocument latest = null;
+
+            if (isPre)
+            {
+                latest = versionsCollection.Find(new BsonDocument { { "latestPre", true } }).FirstOrDefault();
+            }
+            else
+            {
+                latest = versionsCollection.Find(new BsonDocument { { "latestStable", true } }).FirstOrDefault();
+            }
 
             if (latest == null || !latest.Contains("version") || !latest["version"].IsString) return NotFound(new { Status = "SCRIPT_NOT_FOUND" });
 
