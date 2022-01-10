@@ -354,5 +354,61 @@ namespace AcidityV3Backend.Controllers
 
             return NotFound(new { Status = "SCRIPT_NOT_FOUND" });
         }
+
+        [HttpGet("whitelist/version")]
+        public IActionResult VersionLatestGet([FromQuery]string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
+
+            IMongoDatabase database = client.GetDatabase("aciditydb");
+
+            IMongoCollection<BsonDocument> userCollection = database.GetCollection<BsonDocument>("users");
+            IMongoCollection<BsonDocument> versionsCollection = database.GetCollection<BsonDocument>("versions");
+
+            BsonDocument result = userCollection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
+
+            if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
+
+            BsonDocument latest = versionsCollection.Find(new BsonDocument { { "latestStable", true } }).FirstOrDefault();
+
+            if (latest == null || !latest.Contains("version") || !latest["version"].IsString) return NotFound(new { Status = "SCRIPT_NOT_FOUND" });
+
+            return Ok(new { Status = "OK", Version = latest["version"].AsString });
+        }
+
+        [HttpGet("whitelist/version/{version}")]
+        public IActionResult VersionGet(string version, [FromQuery]string key)
+        {
+            if (string.IsNullOrEmpty(version) || string.IsNullOrEmpty(key)) return BadRequest(new { Status = "AUTH_BAD", Message = "Version and/or key is null or empty" });
+
+            IMongoDatabase database = client.GetDatabase("aciditydb");
+            
+            IMongoCollection<BsonDocument> userCollection = database.GetCollection<BsonDocument>("users");
+            IMongoCollection<BsonDocument> versionsCollection = database.GetCollection<BsonDocument>("versions");
+
+            BsonDocument result = userCollection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
+
+            if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
+
+            BsonDocument requested =
+                versionsCollection.Find(new BsonDocument { { "version", version } }).FirstOrDefault();
+
+            if (requested != null)
+            {
+                bool isPre = version.Contains("pre");
+                if (requested.Contains("latestPre") && requested.Contains("latestStable") &&
+                    requested["latestPre"].IsBoolean && requested["latestStable"].IsBoolean)
+                {
+                    return Ok(new
+                    {
+                        Status = "OK", Version = version, Pre = isPre,
+                        Latest = isPre ? requested["latestPre"].AsBoolean : requested["latestStable"].AsBoolean
+                    });
+                }
+            }
+
+            return NotFound(new { Status = "SCRIPT_NOT_FOUND" });
+        }
     }
 }
