@@ -4,6 +4,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -415,6 +416,26 @@ namespace AcidityV3Backend.Controllers
             }
 
             return NotFound(new { Status = "SCRIPT_NOT_FOUND" });
+        }
+
+        [HttpGet("whitelist/versions")]
+        public IActionResult VersionListGet([FromQuery]string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
+
+            IMongoDatabase database = client.GetDatabase("aciditydb");
+
+            IMongoCollection<BsonDocument> userCollection = database.GetCollection<BsonDocument>("users");
+            IMongoCollection<BsonDocument> versionsCollection = database.GetCollection<BsonDocument>("versions");
+
+            BsonDocument result = userCollection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
+
+            if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
+
+            List<BsonDocument> versionList = versionsCollection.Find(new BsonDocument()).ToList();
+
+            return Ok(new { Status = "OK", Versions = versionList });
         }
 
         [HttpGet("whitelist/version")]
