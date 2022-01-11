@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using AcidityV3Backend.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -427,26 +428,15 @@ namespace AcidityV3Backend.Controllers
             IMongoDatabase database = client.GetDatabase("aciditydb");
 
             IMongoCollection<BsonDocument> userCollection = database.GetCollection<BsonDocument>("users");
-            IMongoCollection<BsonDocument> versionsCollection = database.GetCollection<BsonDocument>("versions");
+            IMongoCollection<VersionModel> versionsCollection = database.GetCollection<VersionModel>("versions");
 
             BsonDocument result = userCollection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
 
             if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
 
-            List<BsonDocument> versionList = versionsCollection.Find(new BsonDocument()).ToList();
-            List<BsonDocument> versionListRet = new List<BsonDocument>();
+            List<VersionModel> versionList = versionsCollection.Find(new BsonDocument()).ToList();
 
-            for (int i = 0; i < versionList.Count; i++)
-            {
-                BsonDocument version = versionList[i];
-                if (version.Contains("_id") && version["_id"].IsObjectId)
-                {
-                    version.Remove("_id");
-                }
-                versionListRet.Add(version);
-            }
-
-            return Ok(new { Status = "OK", Versions = versionListRet });
+            return Ok(new { Status = "OK", Versions = versionList });
         }
 
         [HttpGet("whitelist/version")]
