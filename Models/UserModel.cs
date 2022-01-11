@@ -3,8 +3,10 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AcidityV3Backend.Models
 {
-    public class UserModel : BaseModel
+    public class UserModel
     {
+        [BsonId]
+        public string? ObjectId { get; set; }
         [BsonElement("username")]
         public string? Username { get; set; }
         [BsonElement("active")]
