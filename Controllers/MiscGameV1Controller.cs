@@ -31,7 +31,7 @@ namespace AcidityV3Backend.Controllers
         }
 
         [HttpPost("rbxuser/batch")]
-        public async Task<IActionResult> RBXUserBatch([FromBody]int[] users)
+        public async Task<IActionResult> RBXUserBatch([FromBody]long[] users)
         {
             IMongoDatabase database = client.GetDatabase("aciditydb");
             IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("rbx");
@@ -42,7 +42,7 @@ namespace AcidityV3Backend.Controllers
             {
                 for (int i = 0; i < users.Length; i++)
                 {
-                    int user = users[i];
+                    long user = users[i];
                     try
                     {
                         if (client.BaseAddress == null) client.BaseAddress = new Uri("https://users.roblox.com");

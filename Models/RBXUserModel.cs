@@ -8,7 +8,7 @@ namespace AcidityV3Backend.Models
     public class RBXUserModel
     {
         [JsonPropertyName("id")]
-        public int Id { get; set; } = 0;
+        public long Id { get; set; } = 0;
         [JsonPropertyName("name")]
         public string Name { get; set; } = "";
         [JsonPropertyName("displayName")]
