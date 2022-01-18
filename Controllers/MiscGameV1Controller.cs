@@ -45,29 +45,30 @@ namespace AcidityV3Backend.Controllers
                     int user = users[i];
                     try
                     {
-                        client.BaseAddress = new Uri("https://users.roblox.com");
+                        if (client.BaseAddress == null) client.BaseAddress = new Uri("https://users.roblox.com");
                         string ret = await client.GetStringAsync($"/v1/users/{user}");
                         MemoryStream mem = new MemoryStream();
                         StreamWriter writer = new StreamWriter(mem);
                         writer.Write(ret);
                         writer.Flush();
+                        mem.Position = 0;
                         Models.RBXUserModel rbxUser = await JsonSerializer.DeserializeAsync<Models.RBXUserModel>(mem);
                         writer.Close();
 
                         BsonDocument result = collection.Find(new BsonDocument { { "id", user } }).FirstOrDefault();
 
                         dynamic userObj = new ExpandoObject();
-                        userObj.Id = user;
-                        userObj.Name = rbxUser.Name;
-                        userObj.Dev = result != null && result.Contains("dev") && result["dev"].IsBoolean ? result["dev"].AsBoolean : false;
-                        userObj.Admin = result != null && result.Contains("admin") && result["admin"].IsBoolean ? result["dev"].AsBoolean : false;
+                        userObj.id = user;
+                        userObj.name = rbxUser.Name;
+                        userObj.dev = result != null && result.Contains("dev") && result["dev"].IsBoolean ? result["dev"].AsBoolean : false;
+                        userObj.admin = result != null && result.Contains("admin") && result["admin"].IsBoolean ? result["dev"].AsBoolean : false;
 
                         userList.Add(userObj);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         client.Dispose();
-                        return StatusCode(500);
+                        return StatusCode(500, new { Status = "FETCH_ERR", Message = ex.Message });
                     }
                 }
 
