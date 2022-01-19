@@ -30,6 +30,52 @@ namespace AcidityV3Backend.Controllers
             client = new MongoClient(settings);
         }
 
+        [HttpGet("rbxuser/fetch/{user}")]
+        public async Task<IActionResult> RBXUserFetch(string user)
+        {
+            bool idParse = long.TryParse(user, out long id);
+
+            if (!idParse) return BadRequest(new { Status = "BAD", Message = "id is not a valid long" });
+            
+            IMongoDatabase database = client.GetDatabase("aciditydb");
+            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("rbx");
+
+            dynamic userObj = new ExpandoObject();
+
+            using (HttpClient client = new HttpClient())
+            {
+                try
+                {
+                    if (client.BaseAddress == null) client.BaseAddress = new Uri("https://users.roblox.com");
+                    string ret = await client.GetStringAsync($"/v1/users/{user}");
+                    MemoryStream mem = new MemoryStream();
+                    StreamWriter writer = new StreamWriter(mem);
+                    await writer.WriteAsync(ret);
+                    await writer.FlushAsync();
+                    mem.Position = 0;
+                    Models.RBXUserModel rbxUser = await JsonSerializer.DeserializeAsync<Models.RBXUserModel>(mem);
+                    writer.Close();
+
+                    BsonDocument result = collection.Find(new BsonDocument { { "id", id } }).FirstOrDefault();
+
+                    userObj.id = id;
+                    userObj.name = rbxUser.Name;
+                    userObj.dev = result != null && result.Contains("dev") && result["dev"].IsBoolean ? result["dev"].AsBoolean : false;
+                    userObj.admin = result != null && result.Contains("admin") && result["admin"].IsBoolean ? result["admin"].AsBoolean : false;
+                    userObj.blacklisted = result != null && result.Contains("blacklisted") && result["blacklisted"].IsBoolean ? result["blacklisted"].AsBoolean : false;
+                }
+                catch (Exception ex)
+                {
+                    client.Dispose();
+                    return StatusCode(500, new { Status = "FETCH_ERR", Message = "" });
+                }
+                
+                client.Dispose();
+            }
+
+            return Ok(new { Status = "OK", Data = userObj });
+        }
+
         [HttpPost("rbxuser/batch")]
         public async Task<IActionResult> RBXUserBatch([FromBody]long[] users)
         {
@@ -49,8 +95,8 @@ namespace AcidityV3Backend.Controllers
                         string ret = await client.GetStringAsync($"/v1/users/{user}");
                         MemoryStream mem = new MemoryStream();
                         StreamWriter writer = new StreamWriter(mem);
-                        writer.Write(ret);
-                        writer.Flush();
+                        await writer.WriteAsync(ret);
+                        await writer.FlushAsync();
                         mem.Position = 0;
                         Models.RBXUserModel rbxUser = await JsonSerializer.DeserializeAsync<Models.RBXUserModel>(mem);
                         writer.Close();
