@@ -67,7 +67,7 @@ namespace AcidityV3Backend.Controllers
                 catch (Exception ex)
                 {
                     client.Dispose();
-                    return StatusCode(500, new { Status = "FETCH_ERR", Message = "" });
+                    return StatusCode(500, new { Status = "FETCH_ERR", Message = ex.Message });
                 }
                 
                 client.Dispose();
