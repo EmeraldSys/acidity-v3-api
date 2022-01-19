@@ -39,18 +39,29 @@ namespace AcidityV3Backend.Controllers
         }
 
         [HttpGet("whitelist")]
-        public IActionResult WhitelistAuth([FromQuery]string key, [FromQuery]string hash, [FromQuery]string type)
+        public IActionResult WhitelistAuth([FromQuery]string key, [FromQuery]string hash, [FromQuery]string rbxid, [FromQuery]string type)
         {
-            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(hash) || string.IsNullOrEmpty(type)) return BadRequest(new { Status = "AUTH_BAD", Message = "All or some required parameters are null or empty" });
+            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(hash) || string.IsNullOrEmpty(rbxid) || string.IsNullOrEmpty(type)) return BadRequest(new { Status = "AUTH_BAD", Message = "All or some required parameters are null or empty" });
+
+            bool idParse = long.TryParse(rbxid, out long id);
+
+            if (!idParse) return BadRequest(new { Status = "AUTH_BAD", Message = "rbxid is not a valid long" });
 
             IMongoDatabase database = client.GetDatabase("aciditydb");
             IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>("users");
+            IMongoCollection<BsonDocument> rbxCollection = database.GetCollection<BsonDocument>("rbx");
 
             BsonDocument result = collection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
 
             if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
 
             if (!result.Contains("username") || !result["username"].IsString || !(result.Contains("synFingerprint") || result.Contains("swFingerprint"))) return BadRequest(new { Status = "AUTH_BAD", Message = "User object is invalid" });
+
+            string user = result["username"].AsString;
+            BsonDocument rbxResult = rbxCollection.Find(new BsonDocument { { "id", id } }).FirstOrDefault();
+
+            if (rbxResult == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "RBX account not found" });
+            if (!rbxResult.Contains("linked") || !rbxResult["linked"].IsString || (rbxResult["linked"].AsString != user)) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "RBX account not authorized for use with this key" });
 
             using (SHA512 cipher = SHA512.Create())
             {
@@ -60,7 +71,7 @@ namespace AcidityV3Backend.Controllers
 
                 if (type.ToLower() == "syn")
                 {
-                    string info = "ACIDITYV3_" + nonce1 + key + hash + nonce2 + result["synFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour;
+                    string info = "ACIDITYV3_" + nonce1 + key + hash + nonce2 + result["synFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour + hashDate.Minute;
                     byte[] hashBytes = cipher.ComputeHash(Encoding.UTF8.GetBytes(info));
                     cipher.Dispose();
 
@@ -71,12 +82,12 @@ namespace AcidityV3Backend.Controllers
                     }
 
                     string authHash = sb.ToString().ToLower();
-                    return Ok(new { Status = "AUTH_OK", User = result["username"].AsString, Hash = authHash });
+                    return Ok(new { Status = "AUTH_OK", User = user, Hash = authHash });
                 }
                 
                 if (type.ToLower() == "sw")
                 {
-                    string info = "ACIDITYV3_" + nonce1 + key + hash + nonce2 + result["swFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour;
+                    string info = "ACIDITYV3_" + nonce1 + key + hash + nonce2 + result["swFingerprint"].AsString + hashDate.Month + hashDate.Day + hashDate.Year + hashDate.Hour + hashDate.Minute;
                     byte[] hashBytes = cipher.ComputeHash(Encoding.UTF8.GetBytes(info));
                     cipher.Dispose();
 
@@ -87,7 +98,7 @@ namespace AcidityV3Backend.Controllers
                     }
 
                     string authHash = sb.ToString().ToLower();
-                    return Ok(new { Status = "AUTH_OK", User = result["username"].AsString, Hash = authHash });
+                    return Ok(new { Status = "AUTH_OK", User = user, Hash = authHash });
                 }
                 
                 return BadRequest(new { Status = "AUTH_BAD", Message = "Type not allowed" });

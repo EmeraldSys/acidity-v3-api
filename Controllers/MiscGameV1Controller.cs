@@ -61,7 +61,8 @@ namespace AcidityV3Backend.Controllers
                         userObj.id = user;
                         userObj.name = rbxUser.Name;
                         userObj.dev = result != null && result.Contains("dev") && result["dev"].IsBoolean ? result["dev"].AsBoolean : false;
-                        userObj.admin = result != null && result.Contains("admin") && result["admin"].IsBoolean ? result["dev"].AsBoolean : false;
+                        userObj.admin = result != null && result.Contains("admin") && result["admin"].IsBoolean ? result["admin"].AsBoolean : false;
+                        userObj.blacklisted = result != null && result.Contains("blacklisted") && result["blacklisted"].IsBoolean ? result["blacklisted"].AsBoolean : false;
 
                         userList.Add(userObj);
                     }
