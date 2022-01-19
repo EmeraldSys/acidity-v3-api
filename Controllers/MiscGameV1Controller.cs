@@ -59,6 +59,7 @@ namespace AcidityV3Backend.Controllers
                     BsonDocument result = collection.Find(new BsonDocument { { "id", id } }).FirstOrDefault();
 
                     userObj.id = id;
+                    userObj.displayName = rbxUser.DisplayName;
                     userObj.name = rbxUser.Name;
                     userObj.dev = result != null && result.Contains("dev") && result["dev"].IsBoolean ? result["dev"].AsBoolean : false;
                     userObj.admin = result != null && result.Contains("admin") && result["admin"].IsBoolean ? result["admin"].AsBoolean : false;
@@ -105,6 +106,7 @@ namespace AcidityV3Backend.Controllers
 
                         dynamic userObj = new ExpandoObject();
                         userObj.id = user;
+                        userObj.displayName = rbxUser.DisplayName;
                         userObj.name = rbxUser.Name;
                         userObj.dev = result != null && result.Contains("dev") && result["dev"].IsBoolean ? result["dev"].AsBoolean : false;
                         userObj.admin = result != null && result.Contains("admin") && result["admin"].IsBoolean ? result["admin"].AsBoolean : false;
