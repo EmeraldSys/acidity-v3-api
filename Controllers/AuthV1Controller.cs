@@ -447,19 +447,10 @@ namespace AcidityV3Backend.Controllers
         }
 
         [HttpGet("whitelist/versions")]
-        public IActionResult VersionListGet([FromQuery]string key)
+        public IActionResult VersionListGet()
         {
-            if (string.IsNullOrEmpty(key))
-                return BadRequest(new { Status = "AUTH_BAD", Message = "Key is null or empty" });
-
             IMongoDatabase database = client.GetDatabase("aciditydb");
-
-            IMongoCollection<BsonDocument> userCollection = database.GetCollection<BsonDocument>("users");
             IMongoCollection<VersionModel> versionsCollection = database.GetCollection<VersionModel>("versions");
-
-            BsonDocument result = userCollection.Find(new BsonDocument { { "key", key } }).FirstOrDefault();
-
-            if (result == null) return StatusCode(403, new { Status = "AUTH_FORBIDDEN", Message = "Key is invalid" });
 
             List<VersionModel> versionList = versionsCollection.Find(new BsonDocument()).ToList();
 
